@@ -1,0 +1,26 @@
+before_script:
+  - make dist-clean
+
+stages:
+  - test
+  - build
+
+test-user-code:
+  tags:
+    - gcc-avr-5.4
+  stage: test
+  script:
+# Currently only test is code formatting test. Perhaps other tests will be added later on
+    - make format
+
+buid-user-code:
+  tags:
+    - gcc-avr-5.4
+  stage: build
+  script:
+    - make
+  artifacts:
+    name: i237-2018-lab-project-$CI_COMMIT_SHA
+    paths:
+      - bin/atmega2560-user-code.ihx
+      - bin/atmega2560-user-code.elf
