@@ -6,16 +6,24 @@
 
 void main(void)
 {
-    /* Set port B pin 7 for output for Arduino Mega yellow LED */
+    DDRA |= _BV(PA1);
+    DDRA |= _BV(PA3);
+    DDRA |= _BV(PA5);
     DDRB |= _BV(DDB7);
+    PORTB &= ~_BV(PORTB7);
 
     while (1) {
-        //TODO Student can use bitwise XOR and toggle a bit if such technique is known already.
-        /* Set port B pin 7 high to turn Arduino Mega yellow LED on */
-        PORTB |= _BV(PORTB7);
+        PORTA |= _BV(PA1);
         _delay_ms(BLINK_DELAY_MS);
-        /* Set port B pin 7 low to turn Arduino Mega yellow LED off */
-        PORTB &= ~_BV(PORTB7);
+        PORTA &= ~_BV(PA1);
+        _delay_ms(BLINK_DELAY_MS);
+        PORTA |= _BV(PA3);
+        _delay_ms(BLINK_DELAY_MS);
+        PORTA &= ~_BV(PA3);
+        _delay_ms(BLINK_DELAY_MS);
+        PORTA |= _BV(PA5);
+        _delay_ms(BLINK_DELAY_MS);
+        PORTA &= ~_BV(PA5);
         _delay_ms(BLINK_DELAY_MS);
     }
 }
