@@ -29,6 +29,9 @@ BLANK_FW = tooling/atemega2560-blank-user-code/bin/atmega2560-user-code-blank.ih
 # Example: export ARDUINO=/dev/ttyACM1
 ARDUINO ?= /dev/ttyACM0
 
+# Firmware version from git describe
+GIT_DESCR=\"$(shell git describe --abbrev=8 --dirty --always --tags --long)\"
+
 # Source files. wildcard "uses" all .c files in src and lib directory
 SRCDIR = src
 BUILD_LIBS_DIR = lib
@@ -54,7 +57,8 @@ CFLAGS =	-Wall \
 			-std=c11 \
 			-ffreestanding \
 			-mmcu=$(MCU) \
-			-DF_CPU=$(MCU_CPU_FREQ)
+			-DF_CPU=$(MCU_CPU_FREQ) \
+			-DFW_VERSION=$(GIT_DESCR)
 
 # Linker flags
 LDFLAGS =	-mmcu=$(MCU)
