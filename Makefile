@@ -11,6 +11,7 @@ AVR-CC ?= avr-gcc
 AVR-OBJCOPY ?= avr-objcopy
 AVRDUDE ?= avrdude
 CODE_FORMATTER ?= tooling/format-code.sh
+AVRSIZE = avr-size
 
 # Microcontroller type and CPU frequency
 MCU = atmega2560
@@ -46,6 +47,8 @@ OBJ = $(SRC:.c=.o)
 # -Os Optimize code. The special option -Os is meant to turn on all -O2.
 # optimisations that are not expected to increase code size.
 # -std=c11 use C11 standard.
+# -flto use linktime optimisations.
+# -fdata-sections -ffunction-sections put data and functions to sections during compile.
 CFLAGS =	-Wall \
 			-Wextra \
 			-Wpedantic \
@@ -54,6 +57,9 @@ CFLAGS =	-Wall \
 			-Werror \
 			-Wfatal-errors \
 			-Os \
+			-flto \
+			-fdata-sections \
+			-ffunction-sections \
 			-std=c11 \
 			-ffreestanding \
 			-mmcu=$(MCU) \
@@ -61,7 +67,11 @@ CFLAGS =	-Wall \
 			-DFW_VERSION=$(GIT_DESCR)
 
 # Linker flags
-LDFLAGS =	-mmcu=$(MCU)
+# -flto use linktime optimisations.
+# -Wl,-gc-sections link only used data and functions.
+LDFLAGS =	-mmcu=$(MCU) \
+			-flto \
+			-Wl,-gc-sections
 
 # Object copy arguments
 # Do not copy EEPROM section content
@@ -76,6 +86,9 @@ AVRDUDEARGS =	-p $(MCU) \
 				-P $(ARDUINO) \
 				-b 115200 \
 				-D
+
+AVRSIZEARGS =	-C \
+				--mcu=$(MCU)
 
 # Default target. Build firmware
 all: $(ELF) $(TARGET)
@@ -116,4 +129,8 @@ erase:
 format:
 	$(CODE_FORMATTER) $(SRCDIR)/*.c
 
-.PHONY: all clean dist-clean install erase format
+# Print user code size
+size:
+	$(AVRSIZE) $(AVRSIZEARGS) $(ELF)
+
+.PHONY: all clean dist-clean install erase format size
