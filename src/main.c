@@ -11,39 +11,37 @@
 
 static inline void init_leds(void)
 {
-
     DDRA |= _BV(PA1);
     DDRA |= _BV(PA3);
     DDRA |= _BV(PA5);
     DDRB |= _BV(DDB7);
-PORTB &= ~_BV(PORTB7);
+    PORTB &= ~_BV(PORTB7);
 }
 
 static inline void init_errcon(void)
 {
-     simple_uart1_init();
+    simple_uart1_init();
     stderr = &simple_uart1_out;
     assert(stderr != NULL);
     fprintf(stderr, "Version: " FW_VERSION " built on: " __DATE__ " "__TIME__ "\n");
     fprintf(stderr, "avr-libc version: " __AVR_LIBC_VERSION_STRING__ " "
             "avr-gcc version: " __VERSION__ "\n");
-
 }
 static inline void blink_leds(void)
 {
-           PORTA |= _BV(PA1);
-        _delay_ms(BLINK_DELAY_MS);
-        PORTA &= ~_BV(PA1);
-        _delay_ms(BLINK_DELAY_MS);
-        PORTA |= _BV(PA3);
-        _delay_ms(BLINK_DELAY_MS);
-        PORTA &= ~_BV(PA3);
-        _delay_ms(BLINK_DELAY_MS);
-        PORTA |= _BV(PA5);
-        _delay_ms(BLINK_DELAY_MS);
-        PORTA &= ~_BV(PA5);
-_delay_ms(BLINK_DELAY_MS);
-    }
+    PORTA |= _BV(PA1);
+    _delay_ms(BLINK_DELAY_MS);
+    PORTA &= ~_BV(PA1);
+    _delay_ms(BLINK_DELAY_MS);
+    PORTA |= _BV(PA3);
+    _delay_ms(BLINK_DELAY_MS);
+    PORTA &= ~_BV(PA3);
+    _delay_ms(BLINK_DELAY_MS);
+    PORTA |= _BV(PA5);
+    _delay_ms(BLINK_DELAY_MS);
+    PORTA &= ~_BV(PA5);
+    _delay_ms(BLINK_DELAY_MS);
+}
 
 
 void main(void)
