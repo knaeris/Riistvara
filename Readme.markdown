@@ -154,3 +154,5 @@ Following targets are in use:
 - `erase` - Uploads "blank" firmware in `tooling/atemega2560-blank-user-code/bin/atmega2560-user-code-blank.ihx` to the device via `avrdude` See Readme.txt for details.
 
 - `format` - formats C source files in `src/` directory via script in `format-code.sh`.
+
+- `size` - prints user code size via `avr-size` in AVR format.
