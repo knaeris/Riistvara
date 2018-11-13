@@ -64,7 +64,9 @@ CFLAGS =	-Wall \
 			-ffreestanding \
 			-mmcu=$(MCU) \
 			-DF_CPU=$(MCU_CPU_FREQ) \
-			-DFW_VERSION=$(GIT_DESCR)
+			-DFW_VERSION=$(GIT_DESCR) \
+			-DUSART0_ENABLED \
+			-DUSART1_ENABLED
 
 # Linker flags
 # -flto use linktime optimisations.
