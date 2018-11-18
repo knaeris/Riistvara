@@ -1,13 +1,15 @@
 #include <stdio.h>
-#define __ASSERT_USE_STDERR
-#include <assert.h>
 #include <avr/io.h>
 #include <util/delay.h>
 #include "../lib/eriks_freemem/freemem.h"
+#include <avr/pgmspace.h>
 #include "uart.h"
+#include "hmi.h"
+#include "print_helper.h"
+#include "../lib/hd44780_111/hd44780.h"
+#include <string.h>
 
 #define BLINK_DELAY_MS 100
-
 
 static inline void init_leds(void)
 {
@@ -18,15 +20,25 @@ static inline void init_leds(void)
     PORTB &= ~_BV(PORTB7);
 }
 
+static inline void init_lcd(void)
+{
+    lcd_init();
+    lcd_goto(LCD_ROW_1_START);
+    lcd_puts_P(stud_name);
+}
+
 static inline void init_errcon(void)
 {
+    simple_uart0_init();
     simple_uart1_init();
+    stdin = stdout = &simple_uart0_io;
     stderr = &simple_uart1_out;
-    assert(stderr != NULL);
-    fprintf(stderr, "Version: " FW_VERSION " built on: " __DATE__ " "__TIME__ "\n");
-    fprintf(stderr, "avr-libc version: " __AVR_LIBC_VERSION_STRING__ " "
-            "avr-gcc version: " __VERSION__ "\n");
+    fprintf_P(stderr, PSTR("Version: " FW_VERSION " built on: " __DATE__
+                           " "__TIME__"\n"));
+    fprintf_P(stderr, PSTR("avr-libc version: " __AVR_LIBC_VERSION_STRING__
+                           " ""avr-gcc version: " __VERSION__ "\n"));
 }
+
 static inline void blink_leds(void)
 {
     PORTA |= _BV(PA1);
@@ -43,46 +55,43 @@ static inline void blink_leds(void)
     _delay_ms(BLINK_DELAY_MS);
 }
 
+static inline void lab4_month_lookup_P(void)
+{
+    char in_buf = 0;
+    printf_P(PSTR("Enter Month name first letter >"));
+    scanf("%c", &in_buf);
+    printf("%c\n", in_buf);
+    lcd_clr(LCD_ROW_2_START, LCD_VISIBLE_COLS);
+    lcd_goto(LCD_ROW_2_START);
+
+    for (uint8_t i = 0; i < NAME_MONTH_COUNT; i++) {
+        if (!strncmp_P(&in_buf, (PGM_P) pgm_read_word(&(name_month[i])), 1)) {
+            fprintf_P(stdout, (PGM_P) pgm_read_word(&(name_month[i])));
+            fputc('\n', stdout);
+            lcd_puts_P((PGM_P) pgm_read_word(&(name_month[i])));
+            lcd_putc(' ');
+        }
+    }
+}
+
+static inline void init_console(void)
+{
+    fprintf_P(stdout, PSTR("\nConsole Started \n"));
+    fprintf_P(stdout, stud_name);
+    fprintf(stdout, "\n");
+    print_banner_P(stdout, banner, BANNER_ROWS);
+}
 
 void main(void)
 {
     init_leds();
     init_errcon();
-    /* Test assert - REMOVE IN FUTURE LABS */
-    char *array = NULL;
-    uint32_t i = 1;
-    /*
-     * As sizeof(char) is guaranteed to be 1 it is left here only for better
-     * understanding how malloc works. No need to add it in production.
-     */
-    array = malloc( i * sizeof(char));
-
-    if (array == NULL) {
-        // Always test if malloc succeeds
-        assert(array != NULL); // Fire assert and print error to stderr
-        return; // Exit from program anyway when assert is disabled with NDEBUG.
-    }
-
-    /* End test assert */
+    init_lcd();
+    init_console();
 
     while (1) {
         blink_leds();
-        /* Test assert - REMOVE IN FUTURE LABS */
-        /*
-         * Increase memory allocated for array by 500 chars
-         * until we have eaten it all and print space between stack and heap.
-         * That is how assert works in run-time.
-         */
-        array = realloc( array, (i++ * 500) * sizeof(char));
-        fprintf(stderr, "%d\n", freeMem());
-
-        if (array == NULL) {
-            // Always test if malloc succeeds
-            assert(array != NULL); // Fire assert and print error to stderr
-            return; // Exit from program anyway when assert is disabled with NDEBUG.
-        }
-
-        /* End test assert */
+        lab4_month_lookup_P();
     }
 }
 

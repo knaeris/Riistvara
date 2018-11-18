@@ -1,10 +1,8 @@
 #include <avr/io.h>
 #include <stdio.h>
-
 #ifndef F_CPU
 #define F_CPU 16000000UL
 #endif
-
 #ifndef BAUD
 #define BAUD 9600
 #endif
@@ -50,6 +48,7 @@ int simple_uart0_putchar(char c, FILE *stream)
     UDR0 = c;
     return 0;
 }
+
 int simple_uart1_putchar(char c, FILE *stream)
 {
     (void) stream;
