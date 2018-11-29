@@ -1,6 +1,8 @@
 #include "hmi.h"
 #include <avr/pgmspace.h>
 
+const char ver_fw[] PROGMEM =  VER_FW;
+const char ver_libc[] PROGMEM = VER_LIBC;
 const char stud_name[] PROGMEM = "Kristo Naeris";
 
 const char m1[] PROGMEM = "January";
