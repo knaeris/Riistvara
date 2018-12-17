@@ -1,4 +1,4 @@
-
+#include <util/atomic.h>
 #include <avr/io.h>
 #include <util/delay.h>
 #include "../lib/eriks_freemem/freemem.h"
@@ -12,6 +12,11 @@
 #include <avr/interrupt.h>
 #include "cli_microrl.h"
 #include "../lib/helius_microrl/microrl.h"
+#include "../lib/matejx_avr_lib/mfrc522.h"
+#include "../lib/andy_brown_memdebug/memdebug.h"
+#include "../lib/matejx_avr_lib/spi.h"
+#include "../lib/matejx_avr_lib/hwdefs.h"
+#include "../lib/matejx_avr_lib/hwdefs_minimal.h"
 
 #define LED_RED         PORTA1 // Arduino Mega digital pin 23
 #define LED_GREEN       PORTA3 // Arduino Mega digital pin 25
@@ -20,8 +25,25 @@
 #define UART_STATUS_MASK    0x00FF
 #define BLINK_DELAY_MS 100
 
+typedef enum {
+    door_opening,
+    door_open,
+    door_closing,
+    door_closed
+} door_state_t;
+
+door_state_t door_state = door_closed;
+
+volatile uint32_t system_time;
 static microrl_t rl;
 static microrl_t *prl = &rl;
+
+static inline void init_rfid_reader(void)
+{
+    /* Init RFID-RC522 */
+    MFRC522_init();
+    PCD_Init();
+}
 
 static inline void init_leds(void)
 {
@@ -30,6 +52,15 @@ static inline void init_leds(void)
     /* RGB LED board set up and off */
     DDRA |= _BV(LED_RED) | _BV(LED_GREEN) | _BV(LED_BLUE);
     PORTA &= ~(_BV(LED_RED) | _BV(LED_GREEN) | _BV(LED_BLUE));
+}
+
+static inline uint32_t current_time(void)
+{
+    uint32_t cur_time;
+    ATOMIC_BLOCK(ATOMIC_FORCEON) {
+        cur_time = system_time;
+    }
+    return cur_time;
 }
 
 static inline void init_con_uart0(void)
@@ -101,6 +132,117 @@ static inline void init_con_uart1(void)
     init_ver();
 }
 
+static inline void door_status()
+{
+    switch (door_state) {
+    case door_opening:
+        DDRA ^= _BV(DDA3);
+        PORTA |= _BV(LED_RED);
+        door_state = door_open;
+        break;
+
+    case door_open:
+        break;
+
+    case door_closing:
+        door_state = door_closed;
+        PORTA &= ~_BV(LED_RED);
+        DDRA ^= _BV(DDA3);
+        break;
+
+    case door_closed:
+        break;
+    }
+}
+
+static inline void rfid_scanner(void)
+{
+    Uid uid;
+    Uid *uid_ptr = &uid;
+    bool status;
+    bool used_error;
+    static bool message_status;
+    static bool door_open_status;
+    uint32_t time_cur = current_time();
+    static uint32_t message_start;
+    static uint32_t door_open_start;
+    static uint32_t read_start;
+    static char *used_name;
+    char *uidName;
+    byte bufferATQA[10];
+    byte bufferSize[10];
+
+    if ((read_start + 1) < time_cur) {
+        if (PICC_IsNewCardPresent()) {
+            read_start = time_cur;
+            PICC_ReadCardSerial(&uid);
+            uidName = bin2hex(uid_ptr->uidByte, uid_ptr->size);
+            rfid_card_t *checker = head;
+
+            while (checker != NULL) {
+                if (strcmp(checker->UID, uidName) == 0) {
+                    status = true;
+                    break;
+                }
+
+                status = false;
+                checker = checker->next;
+            }
+
+            if (status) {
+                if (checker->name != used_name || used_name == NULL) {
+                    lcd_clr(LCD_ROW_2_START, LCD_VISIBLE_COLS);
+                    lcd_goto(LCD_ROW_2_START);
+                    lcd_puts(checker->name);
+                    used_name = checker->name;
+                    used_error = false;
+                }
+
+                if (door_state != door_open) {
+                    door_state = door_opening;
+                    door_open_status = true;
+                }
+
+                door_open_start = time_cur;
+            } else {
+                if (!used_error) {
+                    lcd_clr(LCD_ROW_2_START, LCD_VISIBLE_COLS);
+                    lcd_goto(LCD_ROW_2_START);
+                    lcd_puts_P(PSTR("Unknown user"));
+                    used_error = true;
+                    used_name = NULL;
+                }
+
+                if (door_state != door_closed) {
+                    door_state = door_closing;
+                    door_open_status = false;
+                }
+            }
+
+            free(uidName);
+            message_status = true;
+            message_start = time_cur;
+            PICC_WakeupA(bufferATQA, bufferSize);
+        }
+    }
+
+    if ((message_start + 5) < time_cur && message_status) {
+        lcd_clr(LCD_ROW_2_START, LCD_VISIBLE_COLS);
+        lcd_goto(LCD_ROW_2_START);
+        lcd_puts_P(PSTR("Door is Closed"));
+        used_error = false;
+        used_name = NULL;
+        message_status = false;
+    }
+
+    if ((door_open_start + 3) < time_cur && door_open_status) {
+        door_state = door_closing;
+        door_open_status = false;
+    }
+
+    door_status(door_state);
+}
+
 void main(void)
 {
     init_leds();
@@ -109,10 +251,12 @@ void main(void)
     init_console();
     init_con_uart1();
     init_sys_timer();
+    init_rfid_reader();
     sei(); // Enable all interrupts. Needed for UART!!
 
     while (1) {
         heartbeat();
+        rfid_scanner();
         microrl_insert_char(prl, (uart0_getc() & UART_STATUS_MASK));
     }
 }
@@ -120,5 +264,6 @@ void main(void)
 ISR(TIMER1_COMPA_vect)
 {
     system_tick();
+    system_time++;
 }
 
